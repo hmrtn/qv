@@ -4,7 +4,7 @@ const { BigNumber, utils } = require("ethers");
 
 describe("qv", async function () {
 
-async function deployTokenFixture() {
+async function deployFixture() {
   const [owner, alice, bob, charlie] = await ethers.getSigners();
 
   const qvf = await ethers.getContractFactory("qv");
@@ -20,12 +20,12 @@ describe(
   "Creating grants",
 	function() {
   it("should create a grant", async function () {
-    const { qv } = await loadFixture(deployTokenFixture);
+    const { qv } = await loadFixture(deployFixture);
     const [alice] = await ethers.getSigners();
     await qv.createGrant(alice.address, "testGrantID");
   }),
   it("should revert if id is already an active grant", async function () {
-    const { qv } = await loadFixture(deployTokenFixture);
+    const { qv } = await loadFixture(deployFixture);
     const [alice] = await ethers.getSigners();
     await qv.connect(alice).createGrant(alice.address, "testGrantID");
     await expect(
@@ -39,7 +39,7 @@ describe(
   "Voting",
 	function() {
   it("should allow a user to vote", async function () {
-    const { qv } = await loadFixture(deployTokenFixture);
+    const { qv } = await loadFixture(deployFixture);
     const [alice, bob] = await ethers.getSigners();
     await qv.createGrant(alice.address, "testGrantID");
     await qv
@@ -47,7 +47,7 @@ describe(
       .vote("testGrantID", 4, { value: ethers.utils.parseEther("1") });
   }),
   it("should fail when not enough funds for vote", async function () {
-    const { qv } = await loadFixture(deployTokenFixture);
+    const { qv } = await loadFixture(deployFixture);
     const [alice, bob] = await ethers.getSigners();
     await qv.createGrant(alice.address, "testGrantID");
     await expect(
@@ -63,7 +63,7 @@ describe(
   "Claiming",
 	function() {
   it("should allow a user to claim", async function () {
-    const { qv } = await loadFixture(deployTokenFixture);
+    const { qv } = await loadFixture(deployFixture);
     const [alice, bob] = await ethers.getSigners();
     await qv.createGrant(alice.address, "testGrantID");
     await qv
