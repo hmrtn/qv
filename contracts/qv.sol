@@ -58,6 +58,7 @@ contract qv {
 	if (grant.owner != msg.sender) revert ("NOT_GRANT_OWNER");
 	if (grant.reward == 0) revert ("NO_REWARD");
 	grant.reward = 0;
+	grant.active = false;
 	grant.owner.transfer(grant.reward);
   }
 }
