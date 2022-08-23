@@ -12,7 +12,7 @@ contract qv {
 	uint256 reward;
   }
 
-  uint256 public VOTE_COST = 10_000_000_000; // 10 gwei,
+  uint256 public VOTE_COST = 10e8; // 10 gwei,
 
   mapping(string => Grant) public grants;
 
@@ -22,7 +22,7 @@ contract qv {
   }
 
   function cost(uint256 currentWeight, uint256 weight)
-    public
+    internal
     view
     returns (uint256 cost)
   {
