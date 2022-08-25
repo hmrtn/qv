@@ -9,7 +9,6 @@ contract qv {
     address owner;
     uint256 timestamp;
     mapping(address => uint256) votes;
-    uint256 weight;
     uint256 reward;
   }
 
@@ -17,25 +16,11 @@ contract qv {
   uint256 public VOTE_COST;
 
   mapping(string => Grant) public grants;
+  mapping(address => bool) public voted; 
 
   constructor(address _token, uint256 _voteCost) {
     TOKEN = ERC20(_token);
     VOTE_COST = _voteCost;
-  }
-
-  function cost(uint256 currentWeight, uint256 weight)
-    internal
-    view
-    returns (uint256)
-  {
-    if (currentWeight > weight) {
-      return weight**2 * VOTE_COST;
-    } 
-    else if (currentWeight < weight) {
-      return (weight**2 - currentWeight * currentWeight) * VOTE_COST;
-    } else {
-      return 0;
-    }
   }
 
   function createGrant(address owner, string calldata id) public {
@@ -47,16 +32,15 @@ contract qv {
   }
 
   function vote(string calldata grantId, uint256 weight) public {
+    if (voted[msg.sender]) revert("ALREADY_VOTED");
     Grant storage grant = grants[grantId];
     if (grant.owner == msg.sender) revert("GRANT_OWNER");
-    uint256 currentWeight = grant.votes[msg.sender];
-    if (currentWeight == weight) return;
-    uint256 voteCost = cost(currentWeight, weight);
+    uint256 voteCost = weight**2 * VOTE_COST;
     if (TOKEN.balanceOf(msg.sender) < voteCost) revert("INSUFFICIENT_FUNDS");
     TOKEN.transferFrom(msg.sender, address(this), voteCost);
     grant.votes[msg.sender] = weight;
-    grant.weight += weight - currentWeight;
     grant.reward += voteCost;
+    voted[msg.sender] = true;
   }
 
   function claimReward(string calldata id) public {

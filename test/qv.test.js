@@ -53,12 +53,13 @@ describe("qv", async function () {
       expect(await token.balanceOf(alice.address)).to.equal(2310);
       expect(await token.balanceOf(bob.address)).to.equal(640);
     });
-    it("should have each subsequent vote cost more for a voter", async function () {
+    it("should only allow a single vote", async function () {
       [owner, alice, bob] = await ethers.getSigners();
       await qv.connect(owner).createGrant(owner.address, "testGrantID");
       await qv.connect(alice).vote("testGrantID", 1);
-      await qv.connect(alice).vote("testGrantID", 2);
-      expect(await token.balanceOf(alice.address)).to.equal(2620);
+      await expect(qv.connect(alice).vote("testGrantID", 2)).to.be.revertedWith(
+        "ALREADY_VOTED"
+      );
     });
   });
 
