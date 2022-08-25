@@ -1,64 +1,53 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract qv {
   struct Grant {
     string id;
-	bool active;
+    bool active;
     address payable owner;
     uint256 timestamp;
     mapping(address => uint256) votes;
-    uint256 weight;
-	uint256 reward;
+    uint256 reward;
   }
 
-  uint256 public VOTE_COST = 10e8; // 10 gwei,
+  ERC20 public TOKEN;
+  uint256 public VOTE_COST;
 
   mapping(string => Grant) public grants;
+  mapping(address => bool) public voted; 
 
-
-  constructor () {
-
-  }
-
-  function cost(uint256 currentWeight, uint256 weight)
-    internal
-    view
-    returns (uint256 cost)
-  {
-    if (currentWeight > weight) {
-      cost = weight**2 * VOTE_COST; 
-    } else if (currentWeight < weight) {
-      cost = (weight * weight - currentWeight * currentWeight) * VOTE_COST;
-    }
+  constructor(uint256 _voteCost) {
+    VOTE_COST = _voteCost;
   }
 
   function createGrant(address owner, string calldata id) public {
     Grant storage grant = grants[id];
-	if (grant.active) revert("ACTIVE_GRANT");
+    if (grant.active) revert("ACTIVE_GRANT");
     grant.owner = payable(owner);
     grant.timestamp = block.timestamp;
-	grant.active = true;
+    grant.active = true;
   }
 
   function vote(string calldata grantId, uint256 weight) public payable {
-	Grant storage grant = grants[grantId];
-	if (grant.owner == msg.sender) revert ("GRANT_OWNER");
-	uint256 currentWeight = grant.weight;
-	if (currentWeight == weight) return;
-	uint voteCost = cost(currentWeight, weight);
-	if (msg.value < voteCost) revert ("INSUFFICIENT_FUNDS");
-	grant.votes[msg.sender] = weight;
-	grant.weight += weight - currentWeight;
-	grant.reward += msg.value;
+    if (voted[msg.sender]) revert("ALREADY_VOTED");
+    Grant storage grant = grants[grantId];
+    if (grant.owner == msg.sender) revert("GRANT_OWNER");
+    uint256 voteCost = weight**2 * VOTE_COST;
+    if (msg.value < voteCost) revert("INSUFFICIENT_FUNDS");
+    grant.votes[msg.sender] = weight;
+    grant.reward += msg.value;
+    voted[msg.sender] = true;
   }
 
   function claimReward(string calldata id) public {
-	Grant storage grant = grants[id];
-	if (grant.owner != msg.sender) revert ("NOT_GRANT_OWNER");
-	if (grant.reward == 0) revert ("NO_REWARD");
-	grant.reward = 0;
-	grant.active = false;
-	grant.owner.transfer(grant.reward);
+    Grant storage grant = grants[id];
+    if (grant.owner != msg.sender) revert("NOT_GRANT_OWNER");
+    if (grant.reward == 0) revert("NO_REWARD");
+    grant.owner.transfer(grant.reward);
+    grant.reward = 0;
+    grant.active = false;
+
   }
 }
