@@ -3,74 +3,73 @@ const { loadFixture } = require("@nomicfoundation/hardhat-network-helpers");
 const { BigNumber, utils } = require("ethers");
 
 describe("qv", async function () {
+  let qv;
+  let token;
 
-async function deployFixture() {
-  const [owner, alice, bob, charlie] = await ethers.getSigners();
+  const cost = 10;
 
-  const qvf = await ethers.getContractFactory("qv");
+  beforeEach(async function () {
+    [owner, alice, bob] = await ethers.getSigners();
 
-  const qv = await qvf.deploy();
+    QV = await ethers.getContractFactory("qv", owner);
+    Token = await ethers.getContractFactory("Token", alice);
+    token = await Token.deploy();
+    qv = await QV.deploy(token.address, cost);
 
-  await qv.deployed();
+    token.connect(alice).transfer(bob.address, 1000);
 
-  return { qvf, qv, owner };
-}
+    await token.connect(alice).approve(qv.address, 10000000);
+    await token.connect(bob).approve(qv.address, 10000000);
+  });
 
-describe(
-  "Creating grants",
-	function() {
-  it("should create a grant", async function () {
-    const { qv } = await loadFixture(deployFixture);
-    const [alice] = await ethers.getSigners();
-    await qv.createGrant(alice.address, "testGrantID");
-  }),
-  it("should revert if id is already an active grant", async function () {
-    const { qv } = await loadFixture(deployFixture);
-    const [alice] = await ethers.getSigners();
-    await qv.connect(alice).createGrant(alice.address, "testGrantID");
-    await expect(
-      qv.connect(alice).createGrant(alice.address, "testGrantID")
-    ).to.be.revertedWith("ACTIVE_GRANT");
-  })
-	}
-);
+  describe("deployment", function () {
+    it("should mint tokens to alice", async function () {
+      expect(await token.balanceOf(alice.address)).to.equal(4000);
+    });
 
-describe(
-  "Voting",
-	function() {
-  it("should allow a user to vote", async function () {
-    const { qv } = await loadFixture(deployFixture);
-    const [alice, bob] = await ethers.getSigners();
-    await qv.createGrant(alice.address, "testGrantID");
-    await qv
-      .connect(bob)
-      .vote("testGrantID", 4, { value: ethers.utils.parseEther("1") });
-  }),
-  it("should fail when not enough funds for vote", async function () {
-    const { qv } = await loadFixture(deployFixture);
-    const [alice, bob] = await ethers.getSigners();
-    await qv.createGrant(alice.address, "testGrantID");
-    await expect(
-      qv.connect(bob).vote("testGrantID", 400000000, {
-        value: ethers.utils.parseEther("0.5"),
-      })
-    ).to.be.revertedWith("INSUFFICIENT_FUNDS");
-  })
-	}
-);
+    it("should transfer tokens to bob", async function () {
+      expect(await token.balanceOf(bob.address)).to.equal(1000);
+    });
+  });
 
-describe(
-  "Claiming",
-	function() {
-  it("should allow a user to claim", async function () {
-    const { qv } = await loadFixture(deployFixture);
-    const [alice, bob] = await ethers.getSigners();
-    await qv.createGrant(alice.address, "testGrantID");
-    await qv
-      .connect(bob)
-      .vote("testGrantID", 4, { value: ethers.utils.parseEther("1") });
-    await qv.connect(alice).claimReward("testGrantID");
-  })
-	}
-);
+  describe("creating a grant", function () {
+    it("should create a grant", async function () {
+      await qv.createGrant(owner.address, "testGrantID");
+    });
+    it("should fail to create a grant with the same ID while its active", async function () {
+      await qv.createGrant(owner.address, "testGrantID");
+      await expect(
+        qv.createGrant(owner.address, "testGrantID")
+      ).to.be.revertedWith("ACTIVE_GRANT");
+    });
+  });
+
+  describe("voting on a grant", function () {
+    it("should vote on a grant", async function () {
+      [owner, alice, bob] = await ethers.getSigners();
+      await qv.connect(owner).createGrant(owner.address, "testGrantID");
+      await qv.connect(alice).vote("testGrantID", 13);
+      await qv.connect(bob).vote("testGrantID", 6);
+      expect(await token.balanceOf(alice.address)).to.equal(2310);
+      expect(await token.balanceOf(bob.address)).to.equal(640);
+    });
+    it("should have each subsequent vote cost more for a voter", async function () {
+      [owner, alice, bob] = await ethers.getSigners();
+      await qv.connect(owner).createGrant(owner.address, "testGrantID");
+      await qv.connect(alice).vote("testGrantID", 1);
+      await qv.connect(alice).vote("testGrantID", 2);
+      expect(await token.balanceOf(alice.address)).to.equal(2620);
+    });
+  });
+
+  describe("claiming reward from grant", function () {
+    it("should claim reward from grant", async function () {
+      [owner, alice, bob, charlie] = await ethers.getSigners();
+      await qv.createGrant(charlie.address, "testGrantID");
+      await qv.connect(alice).vote("testGrantID", 13);
+      await qv.connect(bob).vote("testGrantID", 6);
+      await qv.connect(charlie).claimReward("testGrantID");
+      expect(await token.balanceOf(charlie.address)).to.equal(2050);
+    });
+  });
 });

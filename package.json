@@ -28,12 +28,13 @@
   },
   "dependencies": {
     "@nomicfoundation/hardhat-network-helpers": "^1.0.4",
-    "@openzeppelin/contracts": "3.2.0",
+    "@openzeppelin/contracts": "^4.7.3",
     "@prb/math": "^2.5.0",
     "hardhat-gas-reporter": "^1.0.8",
     "maci-cli": "^0.9.4",
     "maci-contracts": "^0.9.4",
     "maci-crypto": "^0.9.1",
-    "maci-domainobjs": "^0.9.1"
+    "maci-domainobjs": "^0.9.1",
+    "solmate": "^6.5.0"
   }
 }
